@@ -1,0 +1,10 @@
+<!-- 使用模板继承机制自定义500错误页面 -->
+{% extends "base.html" %}
+
+{% block title %}Flasky - Internal Server Error{% endblock %}
+
+{% block page_content %}
+    <div class="page-header">
+        <h1>Internal Server Error</h1>
+    </div>
+{% endblock %}
