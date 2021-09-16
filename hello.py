@@ -86,5 +86,13 @@ class User(db.Model):
         return f'<User {self.username}>'
 
 
+@app.shell_context_processor
+def make_shell_context() -> dict:
+    """
+    注册一个 shell 上下文管理器，启动 flask shell 时可以自动导入数据库实例和模型
+    """
+    return dict(db=db, User=User, Role=Role)
+
+
 if __name__ == '__main__':
     app.run(debug=True)
