@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import Flask, render_template
+from flask import Flask, render_template, session, redirect, url_for
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_wtf import FlaskForm
@@ -15,14 +15,13 @@ moment = Moment(app)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    name = None
     form = NameForm()
 
     if form.validate_on_submit():
-        name = form.name.data
-        form.name.data = ''
+        session['name'] = form.name.data
+        return redirect(url_for('index'))
 
-    return render_template('index.html', form=form, name=name, current_time=datetime.utcnow())
+    return render_template('index.html', form=form, name=session.get('name'), current_time=datetime.utcnow())
 
 
 @app.route('/user/<name>')
@@ -43,3 +42,7 @@ def internal_server_error(e):
 class NameForm(FlaskForm):
     name = StringField('What is your name?', validators=[DataRequired()])
     submit = SubmitField('Submit')
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
