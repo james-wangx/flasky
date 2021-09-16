@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from threading import Thread
 
 from flask import Flask, render_template, session, redirect, url_for
 from flask_bootstrap import Bootstrap
@@ -108,7 +109,15 @@ def make_shell_context() -> dict:
     return dict(db=db, User=User, Role=Role)
 
 
-def send_email(to, subject, template, **kwargs):
+def send_async_email(app, msg):
+    """
+    异步发送邮件
+    """
+    with app.app_context():
+        mail.send(msg)
+
+
+def send_email(to, subject, template, **kwargs) -> Thread:
     """
     发送电子邮件
 
@@ -122,7 +131,9 @@ def send_email(to, subject, template, **kwargs):
                   recipients=[to])
     msg.body = render_template(template + '.txt', **kwargs)
     msg.html = render_template(template + '.html', **kwargs)
-    mail.send(msg)
+    thr = Thread(target=send_async_email, args=[app, msg])
+    thr.start()
+    return thr
 
 
 if __name__ == '__main__':
