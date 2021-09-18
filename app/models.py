@@ -39,7 +39,7 @@ class User(UserMixin, db.Model):
     def password(self, password):
         self.password_hash = generate_password_hash(password)
 
-    def verify_password(self, password):
+    def verify_password(self, password) -> bool:
         return check_password_hash(self.password_hash, password)
 
     def generate_confirmation_token(self, expiration=3600) -> str:
@@ -62,12 +62,10 @@ class User(UserMixin, db.Model):
         :return: True 或 False
         """
         s = Serializer(current_app.config['SECRET_KEY'])
-
         try:
             data = s.loads(token.encode('utf-8'))
         except:
             return False
-
         if data.get('confirm') != self.id:
             return False
         # 验证成功，将默认值 False 改为 True
@@ -83,17 +81,37 @@ class User(UserMixin, db.Model):
     @staticmethod
     def reset_password(token: str, new_password: str) -> bool:
         s = Serializer(current_app.config['SECRET_KEY'])
-
         try:
             data = s.loads(token.encode('utf-8'))
         except:
             return False
-
         user = User.query.get(data.get('reset'))
         if user is None:
             return False
         user.password = new_password
         db.session.add(user)
+
+        return True
+
+    def generate_email_change_token(self, new_email: str, expiration=3600) -> str:
+        s = Serializer(current_app.config['SECRET_KEY'], expiration)
+        return s.dumps({'change_email': self.id, 'new_email': new_email}).decode('utf-8')
+
+    def change_email(self, token: str) -> bool:
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token.encode('utf-8'))
+        except:
+            return False
+        if data.get('change_email') != self.id:
+            return False
+        new_email = data.get('new_email')
+        if new_email is None:
+            return False
+        if self.query.filter_by(email=new_email).first() is not None:
+            return False
+        self.email = new_email
+        db.session.add(self)
 
         return True
 
