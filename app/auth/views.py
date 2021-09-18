@@ -3,12 +3,35 @@
 # views.py - 2021年 九月 17日
 # 身份验证的路由的视图函数
 from flask import render_template, request, url_for, redirect, flash
-from flask_login import login_user, login_required, logout_user
+from flask_login import login_user, login_required, logout_user, current_user
 
 from . import auth
 from .forms import LoginForm, RegistrationForm
 from .. import db
+from ..email import send_email
 from ..models import User
+
+
+@auth.before_app_request
+def before_request():
+    """
+    满足以下四个条件：
+    用户已登录、用户的账户还未确认、请求的 URL 不在 auth 蓝本中、不是对静态文件的请求
+    将重定向到 /unconfirmed.html 页面，重新发送电子邮件
+    """
+    if current_user.is_authenticated \
+            and not current_user.confirmed \
+            and request.blueprint != 'auth' \
+            and request.endpoint != 'static':
+        return redirect(url_for('auth.unconfirmed'))
+
+
+@auth.route('/unconfirmed')
+def unconfirmed():
+    if current_user.is_anonymous or current_user.confirmed:
+        return redirect(url_for('main.index'))
+
+    return render_template('auth/unconfirmed.html')
 
 
 @auth.route('/login', methods=['GET', 'POST'])
@@ -39,6 +62,9 @@ def login():
 @auth.route('/logout')
 @login_required
 def logout():
+    """
+    用户登出
+    """
     logout_user()
     flash('You have been logged out.')
 
@@ -47,13 +73,47 @@ def logout():
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
+    """
+    用户注册
+    """
     form = RegistrationForm()
 
     if form.validate_on_submit():
         user = User(email=form.email.data, username=form.username.data, password=form.password.data)
         db.session.add(user)
         db.session.commit()
-        flash('You can now login.')
+        token = user.generate_confirmation_token()
+        send_email(user.email, 'Confirm Your Account', 'auth/email/confirm', user=user, token=token)
+        flash('A confirmation email has been sent to you by email.')
         return redirect(url_for('auth.login'))
 
     return render_template('auth/register.html', form=form)
+
+
+@auth.route('/confirm/<token>')
+@login_required
+def confirm(token):
+    # 防止用户多次点击
+    if current_user.confirmed:
+        return redirect(url_for('main.index'))
+
+    if current_user.confirm(token):
+        db.session.commit()
+        flash('You have confirmed your account. Thanks!')
+    else:
+        flash('The confirmation link is invalid ro has expired.')
+
+    return redirect(url_for('main.index'))
+
+
+@auth.route('/confirm')
+@login_required
+def resend_confirmation():
+    """
+    重新确认账户
+    """
+    token = current_user.generate_confirmation_token()
+    send_email(current_user.email, 'Confirm Your Account', 'auth/email/confirm', user=current_user, token=token)
+    flash('A new confirmation email has been send to you by email.')
+
+    return redirect(url_for('main.index'))

@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 # models.py - 2021年 九月 16日
 # 模型
+from flask import current_app
 from flask_login import UserMixin
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from app import db, login_manager
@@ -27,6 +29,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), unique=True, index=True)
     password_hash = db.Column(db.String(128))
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+    confirmed = db.Column(db.Boolean, default=False)
 
     @property
     def password(self):
@@ -38,6 +41,40 @@ class User(UserMixin, db.Model):
 
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def generate_confirmation_token(self, expiration=3600) -> str:
+        """
+        生成安全令牌
+
+        :param expiration: 过期时间默认为1小时
+        :return: 令牌字符串
+        """
+        s = Serializer(current_app.config['SECRET_KEY'], expiration)
+        # DeprecationWarning: JWS support is deprecated and will be removed in ItsDangerous 2.1.
+        # Use a dedicated JWS/JWT library such as authlib.
+        return s.dumps({'confirm': self.id}).decode('utf-8')
+
+    def confirm(self, token: str) -> bool:
+        """
+        检验安全令牌
+
+        :param token: 令牌字符串
+        :return: True 或 False
+        """
+        s = Serializer(current_app.config['SECRET_KEY'])
+
+        try:
+            data = s.loads(token.encode('utf-8'))
+        except:
+            return False
+
+        if data.get('confirm') != self.id:
+            return False
+        # 验证成功，将默认值 False 改为 True
+        self.confirmed = True
+        db.session.add(self)
+
+        return True
 
     def __repr__(self):
         return f'<User {self.username}>'
