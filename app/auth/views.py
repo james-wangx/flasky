@@ -6,7 +6,7 @@ from flask import render_template, request, url_for, redirect, flash
 from flask_login import login_user, login_required, logout_user, current_user
 
 from . import auth
-from .forms import LoginForm, RegistrationForm
+from .forms import LoginForm, RegistrationForm, ChangePasswordForm
 from .. import db
 from ..email import send_email
 from ..models import User
@@ -93,6 +93,9 @@ def register():
 @auth.route('/confirm/<token>')
 @login_required
 def confirm(token):
+    """
+    注册完后，确认用户
+    """
     # 防止用户多次点击
     if current_user.confirmed:
         return redirect(url_for('main.index'))
@@ -117,3 +120,21 @@ def resend_confirmation():
     flash('A new confirmation email has been send to you by email.')
 
     return redirect(url_for('main.index'))
+
+
+@auth.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    form = ChangePasswordForm()
+
+    if form.validate_on_submit():
+        if current_user.verify_password(form.old_password.data):
+            current_user.password = form.password.data
+            db.session.add(current_user)
+            db.session.commit()
+            flash('Your password has been updated.')
+            return redirect(url_for('main.index'))
+        else:
+            flash('Invalid password.')
+
+    return render_template('auth/change_password.html', form=form)
