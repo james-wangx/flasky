@@ -7,7 +7,7 @@ import os
 from flask_migrate import Migrate
 
 from app import create_app, db
-from app.models import User, Role
+from app.models import User, Role, Permission
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 migrate = Migrate(app, db)
@@ -18,7 +18,7 @@ def make_shell_context():
     """
     注册一个 shell 上下文管理器，启动 flask shell 时可以自动导入数据库实例和模型
     """
-    return dict(db=db, User=User, Role=Role)
+    return dict(db=db, User=User, Role=Role, Permission=Permission)
 
 
 @app.cli.command()
