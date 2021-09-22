@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # models.py - 2021年 九月 16日
 # 模型
+from datetime import datetime
+
 from flask import current_app
 from flask_login import UserMixin, AnonymousUserMixin
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
@@ -83,6 +85,11 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(128))
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     confirmed = db.Column(db.Boolean, default=False)
+    name = db.Column(db.String(64))  # 真实姓名
+    location = db.Column(db.String(64))  # 所在地
+    about_me = db.Column(db.Text())  # 自我介绍
+    member_since = db.Column(db.DateTime(), default=datetime.utcnow)  # 注册日期
+    last_seen = db.Column(db.DateTime(), default=datetime.utcnow)  # 最后访问日期
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
@@ -182,6 +189,14 @@ class User(UserMixin, db.Model):
         db.session.add(self)
 
         return True
+
+    def ping(self):
+        """
+        刷新用户的最后访问时间
+        """
+        self.last_seen = datetime.utcnow()
+        db.session.add(self)
+        db.session.commit()
 
     def __repr__(self):
         return f'<User {self.username}>'

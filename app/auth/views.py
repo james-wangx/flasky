@@ -20,11 +20,12 @@ def before_request():
     用户已登录、用户的账户还未确认、请求的 URL 不在 auth 蓝本中、不是对静态文件的请求
     将重定向到 /unconfirmed.html 页面，重新发送电子邮件
     """
-    if current_user.is_authenticated \
-            and not current_user.confirmed \
-            and request.blueprint != 'auth' \
-            and request.endpoint != 'static':
-        return redirect(url_for('auth.unconfirmed'))
+    if current_user.is_authenticated:
+        current_user.ping()  # 刷新访问时间
+        if not current_user.confirmed \
+                and request.blueprint != 'auth' \
+                and request.endpoint != 'static':
+            return redirect(url_for('auth.unconfirmed'))
 
 
 @auth.route('/unconfirmed')
