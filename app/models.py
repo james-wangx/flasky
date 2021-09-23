@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # models.py - 2021年 九月 16日
 # 模型
+import hashlib
 from datetime import datetime
 
 from flask import current_app
@@ -85,6 +86,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(128))
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     confirmed = db.Column(db.Boolean, default=False)
+    avatar_hash = db.Column(db.String(32))
     name = db.Column(db.String(64))  # 真实姓名
     location = db.Column(db.String(64))  # 所在地
     about_me = db.Column(db.Text())  # 自我介绍
@@ -99,6 +101,8 @@ class User(UserMixin, db.Model):
                 self.role = Role.query.filter_by(name='Administrator').first()
             if self.role is None:
                 self.role = Role.query.filter_by(default=True).first()
+        if self.email is not None and self.avatar_hash is None:
+            self.avatar_hash = self.gravatar_hash()
 
     def can(self, perm):
         return self.role is not None and self.role.has_permission(perm)
@@ -197,6 +201,22 @@ class User(UserMixin, db.Model):
         self.last_seen = datetime.utcnow()
         db.session.add(self)
         db.session.commit()
+
+    def gravatar_hash(self):
+        return hashlib.md5(self.email.lower().encode('utf-8')).hexdigest()
+
+    def gravatar(self, size=100, default='identicon', rating='g'):
+        """
+        使用 Gravatar 服务获取用户头像
+
+        :param size: 图像尺寸
+        :param default:默认头像生成方式，identicon 为几何图形
+        :param rating: 图像级别
+        :return: 头像 url
+        """
+        url = 'https://secure.gravatar.com/avatar'
+        hash = self.avatar_hash or self.gravatar_hash()
+        return f'{url}/{hash}?s={size}&d={default}&r={rating}'
 
     def __repr__(self):
         return f'<User {self.username}>'
