@@ -87,6 +87,7 @@ class User(UserMixin, db.Model):
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     confirmed = db.Column(db.Boolean, default=False)
     avatar_hash = db.Column(db.String(32))
+    posts = db.relationship('Post', backref='author', lazy='dynamic')
     name = db.Column(db.String(64))  # 真实姓名
     location = db.Column(db.String(64))  # 所在地
     about_me = db.Column(db.Text())  # 自我介绍
@@ -243,3 +244,14 @@ def load_user(user_id):
     将函数注册给 Flask-Login，供需要获取已登录用户信息时调用
     """
     return User.query.get(int(user_id))
+
+
+class Post(db.Model):
+    """
+    博客文章
+    """
+    __tablename__ = 'posts'
+    id = db.Column(db.Integer, primary_key=True)
+    body = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
