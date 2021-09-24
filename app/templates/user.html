@@ -26,6 +26,7 @@
             {% if user.about_me %}<p>{{ user.about_me }}</p>{% endif %}
             <p>Member since {{ moment(user.member_since).format('L') }}. Last
                 seen {{ moment(user.last_seen).fromNow() }}.</p>
+            <p>{{ user.posts.count() }} blog posts.</p>
             {# 编辑用户资料 #}
             <p>
                 {% if user == current_user %} {# 当前用户编辑 #}
@@ -38,4 +39,6 @@
             </p>
         </div>
     </div>
+    <h3>Posts by {{ user.username }}</h3>
+    {% include "_posts.html" %}
 {% endblock %}
