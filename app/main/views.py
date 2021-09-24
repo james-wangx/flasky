@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # views.py - 2021年 九月 17日
-# 路由
-from datetime import datetime
-
-from flask import render_template, flash, redirect, url_for
+# 主页路由
+from flask import render_template, flash, redirect, url_for, request, current_app
 from flask_login import current_user, login_required
 
 from . import main
@@ -24,9 +22,13 @@ def index():
         db.session.commit()
         return redirect(url_for('main.index'))
 
-    posts = Post.query.order_by(Post.timestamp.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    pagination = Post.query.order_by(Post.timestamp.desc()).paginate(
+        page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], error_out=False
+    )
+    posts = pagination.items
 
-    return render_template('index.html', form=form, posts=posts)
+    return render_template('index.html', form=form, posts=posts, pagination=pagination)
 
 
 @main.route('/user/<username>')
