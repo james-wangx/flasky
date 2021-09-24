@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # views.py - 2021年 九月 17日
 # 主页路由
-from flask import render_template, flash, redirect, url_for, request, current_app
+from flask import render_template, flash, redirect, url_for, request, current_app, abort
 from flask_login import current_user, login_required
 
 from . import main
@@ -95,3 +95,24 @@ def post(id):
     post = Post.query.get_or_404(id)
 
     return render_template('posts.html', posts=[post])
+
+
+@main.route('/edit/<int:id>', methods=['GET', 'POST'])
+def edit(id):
+    post = Post.query.get_or_404(id)
+
+    if current_user != post.author and not current_user.can(Permission.ADMIN):
+        abort(404)
+
+    form = PostForm()
+
+    if form.validate_on_submit():
+        post.body = form.body.data
+        db.session.add(post)
+        db.session.commit()
+        flash('The post has been updated.')
+        return redirect(url_for('.post', id=post.id))
+
+    form.body.data = post.body
+
+    return render_template('edit_post.html', form=form)
